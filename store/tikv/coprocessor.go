@@ -687,11 +687,36 @@ func (worker *copIteratorWorker) handleTaskOnce(bo *Backoffer, task *copTask, ch
 		}
 	})
 
-	req := tikvrpc.NewReplicaReadRequest(task.cmdType, &coprocessor.Request{
-		Tp:     worker.req.Tp,
-		Data:   worker.req.Data,
-		Ranges: task.ranges.toPBRanges(),
-	}, worker.req.ReplicaRead, worker.replicaReadSeed, kvrpcpb.Context{
+	copReq := coprocessor.Request{
+		Tp:      worker.req.Tp,
+		StartTs: worker.req.StartTs,
+		Data:    worker.req.Data,
+		Ranges:  task.ranges.toPBRanges(),
+	}
+
+	var cacheKey []byte = nil
+	var cacheValue *coprCacheValue = nil
+
+	// If there are many ranges, it is very likely to be a TableLookupRequest. They are not worth to cache since
+	// computing is not the main cost. Ignore such requests directly to avoid slowly building the cache key.
+	if task.cmdType == tikvrpc.CmdCop && worker.store.coprCache != nil && worker.req.Cacheable && len(copReq.Ranges) < 10 {
+		cKey, err := coprCacheBuildKey(&copReq)
+		if err == nil {
+			cacheKey = cKey
+			cValue := worker.store.coprCache.Get(cKey)
+			if cValue != nil && cValue.RegionID == task.region.id && cValue.TimeStamp <= worker.req.StartTs {
+				// Append cache version to the request to skip Coprocessor computation if possible
+				// when request result is cached
+				copReq.IsCacheEnabled = true
+				copReq.CacheIfMatchVersion = cValue.RegionDataVersion
+				cacheValue = cValue
+			}
+		} else {
+			logutil.BgLogger().Warn("Failed to build copr cache key", zap.Error(err))
+		}
+	}
+
+	req := tikvrpc.NewReplicaReadRequest(task.cmdType, &copReq, worker.req.ReplicaRead, worker.replicaReadSeed, kvrpcpb.Context{
 		IsolationLevel: pbIsolationLevel(worker.req.IsolationLevel),
 		Priority:       kvPriorityToCommandPri(worker.req.Priority),
 		NotFillCache:   worker.req.NotFillCache,
@@ -716,7 +741,7 @@ func (worker *copIteratorWorker) handleTaskOnce(bo *Backoffer, task *copTask, ch
 	}
 
 	// Handles the response for non-streaming copTask.
-	return worker.handleCopResponse(bo, rpcCtx, &copResponse{pbResp: resp.Resp.(*coprocessor.Response)}, task, ch, nil, costTime)
+	return worker.handleCopResponse(bo, rpcCtx, &copResponse{pbResp: resp.Resp.(*coprocessor.Response)}, cacheKey, cacheValue, task, ch, nil, costTime)
 }
 
 type minCommitTSPushed struct {
@@ -847,7 +872,7 @@ func (worker *copIteratorWorker) handleCopStreamResult(bo *Backoffer, rpcCtx *RP
 		return nil, nil
 	}
 	for {
-		remainedTasks, err := worker.handleCopResponse(bo, rpcCtx, &copResponse{pbResp: resp}, task, ch, lastRange, costTime)
+		remainedTasks, err := worker.handleCopResponse(bo, rpcCtx, &copResponse{pbResp: resp}, nil, nil, task, ch, lastRange, costTime)
 		if err != nil || len(remainedTasks) != 0 {
 			return remainedTasks, errors.Trace(err)
 		}
@@ -879,7 +904,7 @@ func (worker *copIteratorWorker) handleCopStreamResult(bo *Backoffer, rpcCtx *RP
 // returns more tasks when that happens, or handles the response if no error.
 // if we're handling streaming coprocessor response, lastRange is the range of last
 // successful response, otherwise it's nil.
-func (worker *copIteratorWorker) handleCopResponse(bo *Backoffer, rpcCtx *RPCContext, resp *copResponse, task *copTask, ch chan<- *copResponse, lastRange *coprocessor.KeyRange, costTime time.Duration) ([]*copTask, error) {
+func (worker *copIteratorWorker) handleCopResponse(bo *Backoffer, rpcCtx *RPCContext, resp *copResponse, cacheKey []byte, cacheValue *coprCacheValue, task *copTask, ch chan<- *copResponse, lastRange *coprocessor.KeyRange, costTime time.Duration) ([]*copTask, error) {
 	if regionErr := resp.pbResp.GetRegionError(); regionErr != nil {
 		if err := bo.Backoff(BoRegionMiss, errors.New(regionErr.String())); err != nil {
 			return nil, errors.Trace(err)
@@ -933,6 +958,29 @@ func (worker *copIteratorWorker) handleCopResponse(bo *Backoffer, rpcCtx *RPCCon
 			if scanDetail.Write != nil {
 				resp.detail.TotalKeys += scanDetail.Write.Total
 				resp.detail.ProcessedKeys += scanDetail.Write.Processed
+			}
+		}
+	}
+	if resp.pbResp.IsCacheHit && cacheValue != nil {
+		// Cache hit and is valid: use cached data as response data and we don't update the cache.
+		data := make([]byte, len(cacheValue.Data))
+		copy(data, cacheValue.Data)
+		resp.pbResp.Data = data
+	} else {
+		// Cache not hit or cache hit but not valid: update the cache if the response can be cached.
+		if cacheKey != nil && resp.pbResp.CacheLastVersion > 0 {
+			if worker.store.coprCache.CheckAdmission(resp.pbResp.Data.Size(), resp.detail.ProcessTime) {
+				data := make([]byte, len(resp.pbResp.Data))
+				copy(data, resp.pbResp.Data)
+
+				newCacheValue := coprCacheValue{
+					Key:               cacheKey,
+					Data:              data,
+					TimeStamp:         worker.req.StartTs,
+					RegionID:          task.region.id,
+					RegionDataVersion: resp.pbResp.CacheLastVersion,
+				}
+				worker.store.coprCache.Set(cacheKey, &newCacheValue)
 			}
 		}
 	}
