@@ -40,10 +40,13 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"fmt"
+	"github.com/opentracing/opentracing-go"
 	"io"
 	"net"
 	"runtime"
 	"runtime/pprof"
+	"sourcegraph.com/sourcegraph/appdash"
+	traceImpl "sourcegraph.com/sourcegraph/appdash/opentracing"
 	"strconv"
 	"strings"
 	"sync"
@@ -1451,6 +1454,23 @@ func (cc *clientConn) writeChunks(ctx context.Context, rs ResultSet, binary bool
 	//	}
 	//	_ = handle.Finish()
 	//}()
+
+	store := appdash.NewMemoryStore()
+	tracer := traceImpl.NewTracer(store)
+	span, ctx := opentracing.StartSpanFromContextWithTracer(context.Background(), tracer, "trace")
+
+	for k := 1; k < 10; k++ {
+		if span := opentracing.SpanFromContext(ctx); span != nil && span.Tracer() != nil {
+			span, _ := opentracing.StartSpanFromContextWithTracer(ctx, span.Tracer(), "child", opentracing.ChildOf(span.Context()))
+			span.Finish()
+		}
+	}
+
+	defer func() {
+		span.Finish()
+		_, _ = store.Traces(appdash.TracesOpts{})
+	}()
+
 
 	for {
 		// Here server.tidbResultSet implements Next method.
