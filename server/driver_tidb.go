@@ -367,15 +367,6 @@ func (trs *tidbResultSet) NewChunk() *chunk.Chunk {
 }
 
 func (trs *tidbResultSet) Next(ctx context.Context, req *chunk.Chunk) error {
-	handles := make([]minitrace.SpanHandle, 0, 50)
-	for i := 2; i < 50; i++ {
-		handles = append(handles, minitrace.NewSpan(ctx, 2))
-	}
-	defer func() {
-		for _, handle := range handles {
-			handle.Finish()
-		}
-	}()
 	return trs.recordSet.Next(ctx, req)
 }
 

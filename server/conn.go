@@ -1441,15 +1441,21 @@ func (cc *clientConn) writeChunks(ctx context.Context, rs ResultSet, binary bool
 	req := rs.NewChunk()
 	gotColumnInfo := false
 	ctx, handle := minitrace.TraceEnable(ctx, 0)
+
+	handles := make([]minitrace.SpanHandle, 0, 100)
+	for i := 1; i < 100; i++ {
+		handles = append(handles, minitrace.NewSpan(ctx, uint32(i)))
+	}
 	defer func() {
+		for _, handle := range handles {
+			handle.Finish()
+		}
 		_ = handle.Finish()
 	}()
 
 	for {
-		handle := minitrace.NewSpan(ctx, 1)
 		// Here server.tidbResultSet implements Next method.
 		err := rs.Next(ctx, req)
-		handle.Finish()
 
 		if err != nil {
 			return err
