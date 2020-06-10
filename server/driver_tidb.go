@@ -17,7 +17,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"github.com/zhongzc/minitrace-go"
 	"sync/atomic"
 	"time"
 
