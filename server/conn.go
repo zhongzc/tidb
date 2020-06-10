@@ -40,6 +40,7 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"fmt"
+	"github.com/zhongzc/minitrace-go"
 	"io"
 	"net"
 	"runtime"
@@ -1439,9 +1440,17 @@ func (cc *clientConn) writeChunks(ctx context.Context, rs ResultSet, binary bool
 	data := cc.alloc.AllocWithLen(4, 1024)
 	req := rs.NewChunk()
 	gotColumnInfo := false
+	ctx, handle := minitrace.TraceEnable(ctx, 0)
+	defer func() {
+		_ = handle.Finish()
+	}()
+
 	for {
+		handle := minitrace.NewSpan(ctx, 1)
 		// Here server.tidbResultSet implements Next method.
 		err := rs.Next(ctx, req)
+		handle.Finish()
+
 		if err != nil {
 			return err
 		}
