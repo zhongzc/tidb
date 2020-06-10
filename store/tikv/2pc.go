@@ -24,7 +24,6 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/failpoint"
 	pb "github.com/pingcap/kvproto/pkg/kvrpcpb"
@@ -1179,22 +1178,10 @@ func (actionCleanup) handleSingleBatch(c *twoPhaseCommitter, bo *Backoffer, batc
 }
 
 func (c *twoPhaseCommitter) prewriteMutations(bo *Backoffer, mutations committerMutations) error {
-	if span := opentracing.SpanFromContext(bo.ctx); span != nil && span.Tracer() != nil {
-		span1 := span.Tracer().StartSpan("twoPhaseCommitter.prewriteMutations", opentracing.ChildOf(span.Context()))
-		defer span1.Finish()
-		bo.ctx = opentracing.ContextWithSpan(bo.ctx, span1)
-	}
-
 	return c.doActionOnMutations(bo, actionPrewrite{}, mutations)
 }
 
 func (c *twoPhaseCommitter) commitMutations(bo *Backoffer, mutations committerMutations) error {
-	if span := opentracing.SpanFromContext(bo.ctx); span != nil && span.Tracer() != nil {
-		span1 := span.Tracer().StartSpan("twoPhaseCommitter.commitMutations", opentracing.ChildOf(span.Context()))
-		defer span1.Finish()
-		bo.ctx = opentracing.ContextWithSpan(bo.ctx, span1)
-	}
-
 	return c.doActionOnMutations(bo, actionCommit{}, mutations)
 }
 
@@ -1283,7 +1270,6 @@ func (c *twoPhaseCommitter) execute(ctx context.Context) (err error) {
 	c.stripNoNeedCommitKeys()
 
 	start = time.Now()
-	logutil.Event(ctx, "start get commit ts")
 	commitTS, err := c.store.getTimestampWithRetry(NewBackoffer(ctx, tsoMaxBackoff).WithVars(c.txn.vars))
 	if err != nil {
 		logutil.Logger(ctx).Warn("2PC get commitTS failed",
@@ -1292,9 +1278,6 @@ func (c *twoPhaseCommitter) execute(ctx context.Context) (err error) {
 		return errors.Trace(err)
 	}
 	commitDetail.GetCommitTsTime = time.Since(start)
-	logutil.Event(ctx, "finish get commit ts")
-	logutil.SetTag(ctx, "commitTs", commitTS)
-
 	// check commitTS
 	if commitTS <= c.startTS {
 		err = errors.Errorf("conn %d Invalid transaction tso with txnStartTS=%v while txnCommitTS=%v",
@@ -1395,7 +1378,6 @@ func (c *twoPhaseCommitter) prewriteBinlog(ctx context.Context) chan *binloginfo
 	}
 	ch := make(chan *binloginfo.WriteResult, 1)
 	go func() {
-		logutil.Eventf(ctx, "start prewrite binlog")
 		binInfo := c.txn.us.GetOption(kv.BinlogInfo).(*binloginfo.BinlogInfo)
 		bin := binInfo.Data
 		bin.StartTs = int64(c.startTS)
@@ -1407,7 +1389,6 @@ func (c *twoPhaseCommitter) prewriteBinlog(ctx context.Context) chan *binloginfo
 			binInfo.Data.PrewriteValue = nil
 			binloginfo.AddOneSkippedCommitter()
 		}
-		logutil.Eventf(ctx, "finish prewrite binlog")
 		ch <- wr
 	}()
 	return ch
@@ -1431,14 +1412,12 @@ func (c *twoPhaseCommitter) writeFinishBinlog(ctx context.Context, tp binlog.Bin
 		}
 	})
 	go func() {
-		logutil.Eventf(ctx, "start write finish binlog")
 		binlogWriteResult := binInfo.WriteBinlog(c.store.clusterID)
 		err := binlogWriteResult.GetError()
 		if err != nil {
 			logutil.BgLogger().Error("failed to write binlog",
 				zap.Error(err))
 		}
-		logutil.Eventf(ctx, "finish write finish binlog")
 		if mock {
 			wg.Done()
 		}

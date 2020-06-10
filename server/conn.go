@@ -50,7 +50,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/failpoint"
 	"github.com/pingcap/parser"
@@ -842,8 +841,6 @@ func (cc *clientConn) addMetrics(cmd byte, startTime time.Time, err error) {
 // It also gets a token from server which is used to limit the concurrently handling clients.
 // The most frequently used command is ComQuery.
 func (cc *clientConn) dispatch(ctx context.Context, data []byte) error {
-	span := opentracing.StartSpan("server.dispatch")
-
 	t := time.Now()
 	cc.lastPacket = data
 	cmd := data[0]
@@ -864,7 +861,6 @@ func (cc *clientConn) dispatch(ctx context.Context, data []byte) error {
 		}
 
 		cc.server.releaseToken(token)
-		span.Finish()
 	}()
 
 	vars := cc.ctx.GetSessionVars()

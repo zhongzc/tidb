@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/danjacques/gofslock/fslock"
-	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/log"
 	"github.com/pingcap/parser/mysql"
@@ -177,7 +176,6 @@ func main() {
 	setCPUAffinity()
 	setupLog()
 	setHeapProfileTracker()
-	setupTracing() // Should before createServer and after setup config.
 	printInfo()
 	setupBinlogClient()
 	setupMetrics()
@@ -684,17 +682,6 @@ func setupMetrics() {
 	go systimemon.StartMonitor(time.Now, systimeErrHandler, sucessCallBack)
 
 	pushMetric(cfg.Status.MetricsAddr, time.Duration(cfg.Status.MetricsInterval)*time.Second)
-}
-
-func setupTracing() {
-	cfg := config.GetGlobalConfig()
-	tracingCfg := cfg.OpenTracing.ToTracingConfig()
-	tracingCfg.ServiceName = "TiDB"
-	tracer, _, err := tracingCfg.NewTracer()
-	if err != nil {
-		log.Fatal("setup jaeger tracer failed", zap.String("error message", err.Error()))
-	}
-	opentracing.SetGlobalTracer(tracer)
 }
 
 func runServer() {

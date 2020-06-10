@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"github.com/cznic/mathutil"
-	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/parser/ast"
 	"github.com/pingcap/parser/auth"
@@ -258,11 +257,6 @@ func Next(ctx context.Context, e Executor, req *chunk.Chunk) error {
 	sessVars := base.ctx.GetSessionVars()
 	if atomic.CompareAndSwapUint32(&sessVars.Killed, 1, 0) {
 		return ErrQueryInterrupted
-	}
-	if span := opentracing.SpanFromContext(ctx); span != nil && span.Tracer() != nil {
-		span1 := span.Tracer().StartSpan(fmt.Sprintf("%T.Next", e), opentracing.ChildOf(span.Context()))
-		defer span1.Finish()
-		ctx = opentracing.ContextWithSpan(ctx, span1)
 	}
 	return e.Next(ctx, req)
 }
@@ -1086,12 +1080,6 @@ func init() {
 			s.RewritePhaseInfo.PreprocessSubQueries++
 			s.RewritePhaseInfo.DurationPreprocessSubQuery += time.Since(begin)
 		}(time.Now())
-
-		if span := opentracing.SpanFromContext(ctx); span != nil && span.Tracer() != nil {
-			span1 := span.Tracer().StartSpan("executor.EvalSubQuery", opentracing.ChildOf(span.Context()))
-			defer span1.Finish()
-			ctx = opentracing.ContextWithSpan(ctx, span1)
-		}
 
 		e := &executorBuilder{is: is, ctx: sctx}
 		exec := e.build(p)

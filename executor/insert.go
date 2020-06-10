@@ -17,8 +17,6 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-
-	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/parser/mysql"
 	"github.com/pingcap/tidb/expression"
 	"github.com/pingcap/tidb/kv"
@@ -29,7 +27,6 @@ import (
 	"github.com/pingcap/tidb/util/chunk"
 	"github.com/pingcap/tidb/util/logutil"
 	"github.com/pingcap/tidb/util/memory"
-	"github.com/pingcap/tidb/util/stringutil"
 	"go.uber.org/zap"
 )
 
@@ -45,13 +42,6 @@ type InsertExec struct {
 }
 
 func (e *InsertExec) exec(ctx context.Context, rows [][]types.Datum) error {
-	logutil.Eventf(ctx, "insert %d rows into table `%s`", len(rows), stringutil.MemoizeStr(func() string {
-		var tblName string
-		if meta := e.Table.Meta(); meta != nil {
-			tblName = meta.Name.L
-		}
-		return tblName
-	}))
 	// If tidb_batch_insert is ON and not in a transaction, we could use BatchInsert mode.
 	sessVars := e.ctx.GetSessionVars()
 	defer sessVars.CleanBuffers()
@@ -97,12 +87,6 @@ func (e *InsertExec) exec(ctx context.Context, rows [][]types.Datum) error {
 }
 
 func prefetchUniqueIndices(ctx context.Context, txn kv.Transaction, rows []toBeCheckedRow) (map[string][]byte, error) {
-	if span := opentracing.SpanFromContext(ctx); span != nil && span.Tracer() != nil {
-		span1 := span.Tracer().StartSpan("prefetchUniqueIndices", opentracing.ChildOf(span.Context()))
-		defer span1.Finish()
-		ctx = opentracing.ContextWithSpan(ctx, span1)
-	}
-
 	nKeys := 0
 	for _, r := range rows {
 		if r.handleKey != nil {
@@ -123,12 +107,6 @@ func prefetchUniqueIndices(ctx context.Context, txn kv.Transaction, rows []toBeC
 }
 
 func prefetchConflictedOldRows(ctx context.Context, txn kv.Transaction, rows []toBeCheckedRow, values map[string][]byte) error {
-	if span := opentracing.SpanFromContext(ctx); span != nil && span.Tracer() != nil {
-		span1 := span.Tracer().StartSpan("prefetchConflictedOldRows", opentracing.ChildOf(span.Context()))
-		defer span1.Finish()
-		ctx = opentracing.ContextWithSpan(ctx, span1)
-	}
-
 	batchKeys := make([]kv.Key, 0, len(rows))
 	for _, r := range rows {
 		for _, uk := range r.uniqueKeys {
@@ -146,11 +124,6 @@ func prefetchConflictedOldRows(ctx context.Context, txn kv.Transaction, rows []t
 }
 
 func prefetchDataCache(ctx context.Context, txn kv.Transaction, rows []toBeCheckedRow) error {
-	if span := opentracing.SpanFromContext(ctx); span != nil && span.Tracer() != nil {
-		span1 := span.Tracer().StartSpan("prefetchDataCache", opentracing.ChildOf(span.Context()))
-		defer span1.Finish()
-		ctx = opentracing.ContextWithSpan(ctx, span1)
-	}
 	values, err := prefetchUniqueIndices(ctx, txn, rows)
 	if err != nil {
 		return err

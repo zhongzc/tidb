@@ -15,8 +15,6 @@ package executor
 
 import (
 	"context"
-
-	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/parser/ast"
 	"github.com/pingcap/parser/mysql"
 	"github.com/pingcap/tidb/config"
@@ -47,12 +45,6 @@ type Compiler struct {
 
 // Compile compiles an ast.StmtNode to a physical plan.
 func (c *Compiler) Compile(ctx context.Context, stmtNode ast.StmtNode) (*ExecStmt, error) {
-	if span := opentracing.SpanFromContext(ctx); span != nil && span.Tracer() != nil {
-		span1 := span.Tracer().StartSpan("executor.Compile", opentracing.ChildOf(span.Context()))
-		defer span1.Finish()
-		ctx = opentracing.ContextWithSpan(ctx, span1)
-	}
-
 	infoSchema := infoschema.GetInfoSchema(c.Ctx)
 	if err := plannercore.Preprocess(c.Ctx, stmtNode, infoSchema); err != nil {
 		return nil, err
