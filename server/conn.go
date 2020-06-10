@@ -40,13 +40,11 @@ import (
 	"crypto/tls"
 	"encoding/binary"
 	"fmt"
-	"github.com/opentracing/opentracing-go"
+	"github.com/zhongzc/minitrace-go"
 	"io"
 	"net"
 	"runtime"
 	"runtime/pprof"
-	"sourcegraph.com/sourcegraph/appdash"
-	traceImpl "sourcegraph.com/sourcegraph/appdash/opentracing"
 	"strconv"
 	"strings"
 	"sync"
@@ -1442,35 +1440,33 @@ func (cc *clientConn) writeChunks(ctx context.Context, rs ResultSet, binary bool
 	data := cc.alloc.AllocWithLen(4, 1024)
 	req := rs.NewChunk()
 	gotColumnInfo := false
-	//ctx, handle := minitrace.TraceEnable(ctx, 0)
-	//
-	//handles := make([]minitrace.SpanHandle, 0, 100)
-	//for i := 1; i < 100; i++ {
-	//	handles = append(handles, minitrace.NewSpan(ctx, uint32(i)))
-	//}
-	//defer func() {
-	//	for _, handle := range handles {
-	//		handle.Finish()
-	//	}
-	//	_ = handle.Finish()
-	//}()
+	ctx, handle := minitrace.TraceEnable(ctx, 0)
 
-	store := appdash.NewMemoryStore()
-	tracer := traceImpl.NewTracer(store)
-	span, ctx := opentracing.StartSpanFromContextWithTracer(context.Background(), tracer, "trace")
-
-	for k := 1; k < 10; k++ {
-		if span := opentracing.SpanFromContext(ctx); span != nil && span.Tracer() != nil {
-			span, _ := opentracing.StartSpanFromContextWithTracer(ctx, span.Tracer(), "child", opentracing.ChildOf(span.Context()))
-			span.Finish()
-		}
+	handles := make([]minitrace.SpanHandle, 0, 10)
+	for i := 1; i < 10; i++ {
+		handles = append(handles, minitrace.NewSpan(ctx, uint32(i)))
 	}
-
 	defer func() {
-		span.Finish()
-		_, _ = store.Traces(appdash.TracesOpts{})
+		for _, handle := range handles {
+			handle.Finish()
+		}
+		_ = handle.Finish()
 	}()
 
+	//store := appdash.NewMemoryStore()
+	//tracer := traceImpl.NewTracer(store)
+	//span, ctx := opentracing.StartSpanFromContextWithTracer(context.Background(), tracer, "trace")
+	//
+	//for k := 1; k < 10; k++ {
+	//	if span := opentracing.SpanFromContext(ctx); span != nil && span.Tracer() != nil {
+	//		span, _ := opentracing.StartSpanFromContextWithTracer(ctx, span.Tracer(), "child", opentracing.ChildOf(span.Context()))
+	//		span.Finish()
+	//	}
+	//}
+	//defer func() {
+	//	span.Finish()
+	//	_, _ = store.Traces(appdash.TracesOpts{})
+	//}()
 
 	for {
 		// Here server.tidbResultSet implements Next method.
