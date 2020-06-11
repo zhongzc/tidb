@@ -22,7 +22,7 @@ require (
 	github.com/ngaut/pools v0.0.0-20180318154953-b7bc8c42aac7
 	github.com/ngaut/sync2 v0.0.0-20141008032647-7a24ed77b2ef
 	github.com/ngaut/unistore v0.0.0-20200604061006-d8e9dc0ad154
-	github.com/opentracing/basictracer-go v1.0.0
+	github.com/opentracing/basictracer-go v1.1.0
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pingcap/badger v1.5.1-0.20200604041313-19c397305fcc
 	github.com/pingcap/br v0.0.0-20200521085655-53201addd4ad
@@ -48,19 +48,19 @@ require (
 	github.com/tiancaiamao/appdash v0.0.0-20181126055449-889f96f722a2
 	github.com/uber-go/atomic v1.3.2
 	github.com/uber/jaeger-client-go v2.22.1+incompatible
-	github.com/zhongzc/minitrace-go v0.0.0-20200609192014-efac55cd0102
+	github.com/zhongzc/minitrace-go v0.0.0-20200611065713-879ef34537c4
 	go.etcd.io/etcd v0.5.0-alpha.5.0.20191023171146-3cf2f69b5738
 	go.uber.org/atomic v1.6.0
 	go.uber.org/automaxprocs v1.2.0
 	go.uber.org/zap v1.15.0
-	golang.org/x/net v0.0.0-20200324143707-d3edc9973b7e
+	golang.org/x/net v0.0.0-20200421231249-e086a090c8fd
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 	golang.org/x/sys v0.0.0-20200323222414-85ca7c5b95cd
 	golang.org/x/text v0.3.2
 	golang.org/x/tools v0.0.0-20200325203130-f53864d0dba1
 	google.golang.org/grpc v1.26.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
-	sourcegraph.com/sourcegraph/appdash v0.0.0-20180531100431-4c381bd170b4
+	sourcegraph.com/sourcegraph/appdash v0.0.0-20190731080439-ebfcffb1b5c0
 	sourcegraph.com/sourcegraph/appdash-data v0.0.0-20151005221446-73f23eafcf67
 )
 
