@@ -1442,8 +1442,8 @@ func (cc *clientConn) writeChunks(ctx context.Context, rs ResultSet, binary bool
 	gotColumnInfo := false
 	ctx, handle := minitrace.TraceEnable(ctx, 0)
 
-	handles := make([]minitrace.SpanHandle, 0, 20)
-	for i := 1; i < 20; i++ {
+	handles := make([]minitrace.SpanHandle, 0, 100)
+	for i := 1; i < 100; i++ {
 		handles = append(handles, minitrace.NewSpan(ctx, uint32(i)))
 	}
 	defer func() {
