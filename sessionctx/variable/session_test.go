@@ -14,6 +14,10 @@
 package variable_test
 
 import (
+	"fmt"
+	"github.com/pingcap/kvproto/pkg/span"
+	"math/rand"
+	"testing"
 	"time"
 
 	. "github.com/pingcap/check"
@@ -252,4 +256,96 @@ func (*testSessionSuite) TestIsolationRead(c *C) {
 	c.Assert(ok, Equals, false)
 	_, ok = sessVars.IsolationReadEngines[kv.TiFlash]
 	c.Assert(ok, Equals, true)
+}
+
+func TestEncode(t *testing.T) {
+	ggg := func() []*span.Span {
+		return []*span.Span{
+			{
+				Id:          rand.Uint64(),
+				Link:        &span.Link{Link: &span.Link_Parent{Parent: &span.Parent{Id: rand.Uint64()}}},
+				BeginCycles: rand.Uint64(),
+				EndCycles:   rand.Uint64(),
+				Event:       rand.Uint32(),
+			},
+			{
+				Id:          rand.Uint64(),
+				Link:        &span.Link{Link: &span.Link_Parent{Parent: &span.Parent{Id: rand.Uint64()}}},
+				BeginCycles: rand.Uint64(),
+				EndCycles:   rand.Uint64(),
+				Event:       rand.Uint32(),
+			},
+			{
+				Id:          rand.Uint64(),
+				Link:        &span.Link{Link: &span.Link_Parent{Parent: &span.Parent{Id: rand.Uint64()}}},
+				BeginCycles: rand.Uint64(),
+				EndCycles:   rand.Uint64(),
+				Event:       rand.Uint32(),
+			},
+			{
+				Id:          rand.Uint64(),
+				Link:        &span.Link{Link: &span.Link_Parent{Parent: &span.Parent{Id: rand.Uint64()}}},
+				BeginCycles: rand.Uint64(),
+				EndCycles:   rand.Uint64(),
+				Event:       rand.Uint32(),
+			},
+			{
+				Id:          rand.Uint64(),
+				Link:        &span.Link{Link: &span.Link_Parent{Parent: &span.Parent{Id: rand.Uint64()}}},
+				BeginCycles: rand.Uint64(),
+				EndCycles:   rand.Uint64(),
+				Event:       rand.Uint32(),
+			},
+		}
+	}
+
+	fff := func() []*span.SpanSet {
+		spanSets := make([]*span.SpanSet, 0, 10)
+		for i := 0; i < 10; i++ {
+			spanSets = append(spanSets, &span.SpanSet{
+				StartTimeNs:  rand.Uint64(),
+				CyclesPerSec: rand.Uint64(),
+				Spans:        ggg(),
+				CreateTimeNs: rand.Uint64(),
+			})
+		}
+		return spanSets
+	}
+
+	_ = span.TraceDetail{
+		SpanSets: fff(),
+		RemoteTraces: []*span.RemoteTrace{{
+			LocalParentId: rand.Uint64(),
+			TraceDetail: &span.TraceDetail{
+				SpanSets:     fff(),
+				RemoteTraces: nil,
+			},
+		}, {
+			LocalParentId: rand.Uint64(),
+			TraceDetail: &span.TraceDetail{
+				SpanSets:     fff(),
+				RemoteTraces: nil,
+			},
+		}},
+	}
+
+	s := &span.Span{
+		Id:          rand.Uint64(),
+		//Link:        &span.Link{Link: &span.Link_Parent{Parent: &span.Parent{Id: rand.Uint64()}}},
+		BeginCycles: rand.Uint64(),
+		EndCycles:   rand.Uint64(),
+		Event:       rand.Uint32(),
+	}
+	bytes, _ := s.Marshal()
+	fmt.Println("Without link: ", len(bytes))
+
+	s = &span.Span{
+		Id:          rand.Uint64(),
+		Link:        &span.Link{Link: &span.Link_Parent{Parent: &span.Parent{Id: rand.Uint64()}}},
+		BeginCycles: rand.Uint64(),
+		EndCycles:   rand.Uint64(),
+		Event:       rand.Uint32(),
+	}
+	bytes, _ = s.Marshal()
+	fmt.Println("With link: ", len(bytes))
 }

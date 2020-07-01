@@ -1754,6 +1754,8 @@ const (
 	SlowLogBackoffTotal = "Backoff_total"
 	// SlowLogWriteSQLRespTotal is the total time used to write response to client.
 	SlowLogWriteSQLRespTotal = "Write_sql_response_total"
+	// SlowLogTraceDetail is tracing results from both TiKV and TiDB.
+	SlowLogTraceDetail = "TraceDetail"
 )
 
 // SlowQueryLogItems is a collection of items that should be included in the
@@ -1785,6 +1787,7 @@ type SlowQueryLogItems struct {
 	PDTotal           time.Duration
 	BackoffTotal      time.Duration
 	WriteSQLRespTotal time.Duration
+	TraceDetail       string
 }
 
 // SlowLogFormat uses for formatting slow log.
@@ -1943,10 +1946,15 @@ func (s *SessionVars) SlowLogFormat(logItems *SlowQueryLogItems) string {
 		writeSlowLogItem(&buf, SlowLogPrevStmt, logItems.PrevStmt)
 	}
 
+	if len(logItems.TraceDetail) != 0 {
+		writeSlowLogItem(&buf, SlowLogTraceDetail, logItems.TraceDetail)
+	}
+
 	buf.WriteString(logItems.SQL)
 	if len(logItems.SQL) == 0 || logItems.SQL[len(logItems.SQL)-1] != ';' {
 		buf.WriteString(";")
 	}
+
 	return buf.String()
 }
 

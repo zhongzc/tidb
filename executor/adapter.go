@@ -15,7 +15,9 @@ package executor
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
+	"github.com/pingcap/kvproto/pkg/span"
 	"math"
 	"strconv"
 	"strings"
@@ -848,6 +850,7 @@ func (a *ExecStmt) LogSlowQuery(txnTS uint64, succ bool, hasMoreResults bool) {
 	memMax := sessVars.StmtCtx.MemTracker.MaxConsumed()
 	diskMax := sessVars.StmtCtx.DiskTracker.MaxConsumed()
 	_, planDigest := getPlanDigest(a.Ctx, a.Plan)
+	traceDetail := sessVars.StmtCtx.GetTraceDetail()
 	slowItems := &variable.SlowQueryLogItems{
 		TxnTS:             txnTS,
 		SQL:               sql.String(),
@@ -874,6 +877,7 @@ func (a *ExecStmt) LogSlowQuery(txnTS uint64, succ bool, hasMoreResults bool) {
 		PDTotal:           time.Duration(atomic.LoadInt64(&stmtDetail.WaitPDRespDuration)),
 		BackoffTotal:      time.Duration(atomic.LoadInt64(&stmtDetail.BackoffDuration)),
 		WriteSQLRespTotal: stmtDetail.WriteSQLRespDuration,
+		TraceDetail:       encodeTraceDetail(traceDetail),
 	}
 	if _, ok := a.StmtNode.(*ast.CommitStmt); ok {
 		slowItems.PrevStmt = sessVars.PrevStmt.String()
@@ -929,6 +933,15 @@ func getPlanDigest(sctx sessionctx.Context, p plannercore.Plan) (normalized, pla
 	normalized, planDigest = plannercore.NormalizePlan(p)
 	sctx.GetSessionVars().StmtCtx.SetPlanDigest(normalized, planDigest)
 	return
+}
+
+
+func encodeTraceDetail(traceDetail span.TraceDetail) string {
+	bytes, err := traceDetail.Marshal()
+	if err != nil {
+		return ""
+	}
+	return base64.StdEncoding.EncodeToString(bytes)
 }
 
 // SummaryStmt collects statements for information_schema.statements_summary

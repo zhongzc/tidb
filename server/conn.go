@@ -51,6 +51,7 @@ import (
 	"time"
 
 	"github.com/opentracing/opentracing-go"
+	"github.com/pingcap-incubator/minitrace-go"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/failpoint"
 	"github.com/pingcap/parser"
@@ -1300,6 +1301,7 @@ func (cc *clientConn) handleQuery(ctx context.Context, sql string) (err error) {
 	if len(pointPlans) > 0 {
 		defer cc.ctx.ClearValue(plannercore.PointPlanKey)
 	}
+
 	for i, stmt := range stmts {
 		if len(pointPlans) > 0 {
 			// Save the point plan in Session so we don't need to build the point plan again.
@@ -1397,9 +1399,14 @@ func (cc *clientConn) prefetchPointPlanKeys(stmts []ast.StmtNode) ([]plannercore
 
 func (cc *clientConn) handleStmt(ctx context.Context, stmt ast.StmtNode, warns []stmtctx.SQLWarn, lastStmt bool) error {
 	ctx = context.WithValue(ctx, execdetails.StmtExecDetailKey, &execdetails.StmtExecDetails{})
+	ctx, handle := minitrace.TraceEnable(ctx, 0)
+
 	rs, err := cc.ctx.ExecuteStmt(ctx, stmt)
 	if rs != nil {
-		defer terror.Call(rs.Close)
+		defer func() {
+			cc.ctx.GetSessionVars().StmtCtx.SetSpanSets(handle.Collect())
+			terror.Call(rs.Close)
+		}()
 	}
 	if err != nil {
 		return err

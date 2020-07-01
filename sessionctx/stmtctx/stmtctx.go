@@ -14,6 +14,7 @@
 package stmtctx
 
 import (
+	"github.com/pingcap-incubator/minitrace-go"
 	"math"
 	"sort"
 	"strconv"
@@ -21,6 +22,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/pingcap/kvproto/pkg/span"
 	"github.com/pingcap/parser"
 	"github.com/pingcap/parser/model"
 	"github.com/pingcap/parser/mysql"
@@ -110,6 +112,7 @@ type StatementContext struct {
 		errorCount        uint16
 		histogramsNotLoad bool
 		execDetails       execdetails.ExecDetails
+		traceDetail       span.TraceDetail
 		allExecDetails    []*execdetails.ExecDetails
 	}
 	// PrevAffectedRows is the affected-rows value(DDL is 0, DML is the number of affected rows).
@@ -491,6 +494,9 @@ func (sc *StatementContext) MergeExecDetails(details *execdetails.ExecDetails, c
 		sc.mu.execDetails.TotalKeys += details.TotalKeys
 		sc.mu.execDetails.ProcessedKeys += details.ProcessedKeys
 		sc.mu.allExecDetails = append(sc.mu.allExecDetails, details)
+		if details.RemoteTrace != nil {
+			sc.mu.traceDetail.RemoteTraces = append(sc.mu.traceDetail.RemoteTraces, details.RemoteTrace)
+		}
 	}
 	sc.mu.execDetails.CommitDetail = commitDetails
 	sc.mu.Unlock()
@@ -647,6 +653,46 @@ func (sc *StatementContext) GetLockWaitStartTime() time.Time {
 		sc.lockWaitStartTime = &curTime
 	}
 	return *sc.lockWaitStartTime
+}
+
+func (sc *StatementContext) SetSpanSets(spanSets []minitrace.SpanSet) {
+	pbSpanSets := make([]*span.SpanSet, 0, len(spanSets))
+	for _, spanSet := range spanSets {
+		pbSpanSet := &span.SpanSet{
+			CreateTimeNs: spanSet.StartTimeNs,
+			StartTimeNs:  spanSet.StartTimeNs,
+			CyclesPerSec: 1_000_000_000,
+			Spans:        make([]*span.Span, 0, len(spanSet.Spans)),
+		}
+
+		for _, spn := range spanSet.Spans {
+			pbSpan := &span.Span{
+				Id:          spn.Id,
+				Event:       spn.Event,
+				BeginCycles: spn.BeginNs,
+				EndCycles:   spn.EndNs,
+			}
+			if spn.Parent == 0 {
+				pbSpan.Link = &span.Link{Link: &span.Link_Root{Root: &span.Root{}}}
+			} else {
+				pbSpan.Link = &span.Link{Link: &span.Link_Parent{Parent: &span.Parent{Id: spn.Parent}}}
+			}
+			pbSpanSet.Spans = append(pbSpanSet.Spans, pbSpan)
+		}
+
+		pbSpanSets = append(pbSpanSets, pbSpanSet)
+	}
+	sc.mu.Lock()
+	sc.mu.traceDetail.SpanSets = pbSpanSets
+	sc.mu.Unlock()
+}
+
+func (sc *StatementContext) GetTraceDetail() (res span.TraceDetail) {
+	sc.mu.Lock()
+	res = sc.mu.traceDetail
+	sc.mu.Unlock()
+
+	return
 }
 
 //CopTasksDetails collects some useful information of cop-tasks during execution.

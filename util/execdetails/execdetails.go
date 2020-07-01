@@ -22,6 +22,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/pingcap/kvproto/pkg/span"
 	"github.com/pingcap/tipb/go-tipb"
 	"go.uber.org/zap"
 )
@@ -45,6 +46,7 @@ type ExecDetails struct {
 	TotalKeys        int64
 	ProcessedKeys    int64
 	CommitDetail     *CommitDetails
+	RemoteTrace      *span.RemoteTrace
 }
 
 type stmtExecDetailKeyType struct{}
