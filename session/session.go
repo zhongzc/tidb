@@ -76,6 +76,7 @@ import (
 	"github.com/pingcap/tidb/util/sqlexec"
 	"github.com/pingcap/tidb/util/timeutil"
 	"github.com/pingcap/tipb/go-binlog"
+	"github.com/tikv/minitrace-go"
 	"go.uber.org/zap"
 )
 
@@ -496,6 +497,8 @@ func (s *session) doCommitWithRetry(ctx context.Context) error {
 		defer span1.Finish()
 		ctx = opentracing.ContextWithSpan(ctx, span1)
 	}
+	ctx, span := minitrace.StartSpanWithContext(ctx, "session.doCommitWithRetry")
+	defer span.Finish()
 	err = s.doCommit(ctx)
 	if err != nil {
 		commitRetryLimit := s.sessionVars.RetryLimit
@@ -553,6 +556,8 @@ func (s *session) CommitTxn(ctx context.Context) error {
 		defer span1.Finish()
 		ctx = opentracing.ContextWithSpan(ctx, span1)
 	}
+	ctx, span := minitrace.StartSpanWithContext(ctx, "session.CommitTxn")
+	defer span.Finish()
 
 	var commitDetail *execdetails.CommitDetails
 	ctx = context.WithValue(ctx, execdetails.CommitDetailCtxKey, &commitDetail)
@@ -575,6 +580,9 @@ func (s *session) RollbackTxn(ctx context.Context) {
 		span1 := span.Tracer().StartSpan("session.RollbackTxn", opentracing.ChildOf(span.Context()))
 		defer span1.Finish()
 	}
+
+	ctx, span := minitrace.StartSpanWithContext(ctx, "session.RollbackTxn")
+	defer span.Finish()
 
 	if s.txn.Valid() {
 		terror.Log(s.txn.Rollback())
@@ -1079,6 +1087,9 @@ func (s *session) ParseSQL(ctx context.Context, sql, charset, collation string) 
 		defer span1.Finish()
 	}
 	defer trace.StartRegion(ctx, "ParseSQL").End()
+	span := minitrace.StartSpan(ctx, "session.ParseSQL")
+	defer span.Finish()
+
 	s.parser.SetSQLMode(s.sessionVars.SQLMode)
 	s.parser.SetParserConfig(s.sessionVars.BuildParserConfig())
 	return s.parser.Parse(sql, charset, collation)
@@ -1154,6 +1165,8 @@ func (s *session) Execute(ctx context.Context, sql string) (recordSets []sqlexec
 		ctx = opentracing.ContextWithSpan(ctx, span1)
 		logutil.Eventf(ctx, "execute: %s", sql)
 	}
+	ctx, span := minitrace.StartSpanWithContext(ctx, "session.Execute")
+	defer span.Finish()
 
 	stmtNodes, err := s.Parse(ctx, sql)
 	if err != nil {
@@ -1213,6 +1226,8 @@ func (s *session) ExecuteStmt(ctx context.Context, stmtNode ast.StmtNode) (sqlex
 		defer span1.Finish()
 		ctx = opentracing.ContextWithSpan(ctx, span1)
 	}
+	ctx, span := minitrace.StartSpanWithContext(ctx, "session.ExecuteStmt")
+	defer span.Finish()
 
 	s.PrepareTxnCtx(ctx)
 	err := s.loadCommonGlobalVariablesIfNeeded()
@@ -1293,6 +1308,9 @@ func runStmt(ctx context.Context, se *session, s sqlexec.Statement) (rs sqlexec.
 		defer span1.Finish()
 		ctx = opentracing.ContextWithSpan(ctx, span1)
 	}
+	ctx, span := minitrace.StartSpanWithContext(ctx, "session.runStmt")
+	defer span.Finish()
+
 	se.SetValue(sessionctx.QueryString, s.OriginText())
 	if _, ok := s.(*executor.ExecStmt).StmtNode.(ast.DDLNode); ok {
 		se.SetValue(sessionctx.LastExecuteDDL, true)

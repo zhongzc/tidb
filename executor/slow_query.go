@@ -512,6 +512,7 @@ type slowQueryTuple struct {
 	rocksdbBlockCacheCount    uint64
 	rocksdbBlockReadCount     uint64
 	rocksdbBlockReadByte      uint64
+	traceID                   uint64
 }
 
 func (st *slowQueryTuple) setFieldValue(tz *time.Location, field, value string, lineNum int, checker *slowLogChecker) (valid bool, err error) {
@@ -688,6 +689,8 @@ func (st *slowQueryTuple) setFieldValue(tz *time.Location, field, value string, 
 			st.backoffDetail += " "
 		}
 		st.backoffDetail += value
+	case variable.SlowLogTraceID:
+		st.traceID, err = strconv.ParseUint(value, 10, 64)
 	}
 	if err != nil {
 		return valid, fmt.Errorf("Parse slow log at line " + strconv.FormatInt(int64(lineNum), 10) + " failed. Field: `" + field + "`, error: " + err.Error())
@@ -782,6 +785,7 @@ func (st *slowQueryTuple) convertToDatumRow() []types.Datum {
 	record = append(record, types.NewStringDatum(st.planDigest))
 	record = append(record, types.NewStringDatum(st.prevStmt))
 	record = append(record, types.NewStringDatum(st.sql))
+	record = append(record, types.NewUintDatum(st.traceID))
 	return record
 }
 

@@ -58,6 +58,7 @@ import (
 	"github.com/pingcap/tidb/util/execdetails"
 	"github.com/pingcap/tidb/util/logutil"
 	"github.com/pingcap/tidb/util/memory"
+	"github.com/tikv/minitrace-go"
 	"go.uber.org/zap"
 )
 
@@ -271,6 +272,8 @@ func Next(ctx context.Context, e Executor, req *chunk.Chunk) error {
 		defer span1.Finish()
 		ctx = opentracing.ContextWithSpan(ctx, span1)
 	}
+	ctx, span := minitrace.StartSpanWithContext(ctx, fmt.Sprintf("%T.Next", e))
+	defer span.Finish()
 	if trace.IsEnabled() {
 		defer trace.StartRegion(ctx, fmt.Sprintf("%T.Next", e)).End()
 	}
@@ -1139,6 +1142,9 @@ func init() {
 			defer span1.Finish()
 			ctx = opentracing.ContextWithSpan(ctx, span1)
 		}
+
+		ctx, span := minitrace.StartSpanWithContext(ctx, "executor.EvalSubQuery")
+		defer span.Finish()
 
 		e := &executorBuilder{is: is, ctx: sctx}
 		exec := e.build(p)
