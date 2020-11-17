@@ -175,7 +175,8 @@ type Config struct {
 	// The maximum supported length of an individual SET element is M <= 255 and (M x w) <= 1020,
 	// where M is the element literal length and w is the number of bytes required for the maximum-length character in the character set.
 	// See https://dev.mysql.com/doc/refman/8.0/en/string-type-syntax.html for more details.
-	EnableEnumLengthLimit bool `toml:"enable-enum-length-limit" json:"enable-enum-length-limit"`
+	EnableEnumLengthLimit bool  `toml:"enable-enum-length-limit" json:"enable-enum-length-limit"`
+	Trace                 Trace `toml:"trace" json:"trace"`
 }
 
 // UpdateTempStoragePath is to update the `TempStoragePath` if port/statusPort was changed
@@ -616,6 +617,18 @@ type IsolationRead struct {
 	Engines []string `toml:"engines" json:"engines"`
 }
 
+// Trace is the config for timeline tracing.
+type Trace struct {
+	// Jaeger agent to report tracing results.
+	JaegerThriftCompactAgent string `toml:"jaeger-thrift-compact-agent" json:"jaeger-thrift-compact-agent"`
+	// Datadog agent to report tracing results.
+	DatadogAgent string `toml:"datadog-agent" json:"datadog-agent"`
+	// TiDB Dashboard agent to report tracing results.
+	DashboardAgent string `toml:"dashboard-agent" json:"dashboard-agent"`
+	// The maximum length of spans to report for each SQL.
+	MaxSpansLength int64 `toml:"max-spans-length" json:"max-spans-length"`
+}
+
 // Experimental controls the features that are still experimental: their semantics, interfaces are subject to change.
 // Using these features in the production environment is not recommended.
 type Experimental struct {
@@ -786,6 +799,12 @@ var defaultConf = Config{
 	DeprecateIntegerDisplayWidth: false,
 	TxnScope:                     DefTxnScope,
 	EnableEnumLengthLimit:        true,
+	Trace: Trace{
+		JaegerThriftCompactAgent: "",
+		DatadogAgent:             "",
+		DashboardAgent:           "",
+		MaxSpansLength:           2000,
+	},
 }
 
 var (

@@ -33,6 +33,7 @@ import (
 	"github.com/pingcap/tidb/util/ranger"
 	"github.com/pingcap/tidb/util/stringutil"
 	"github.com/pingcap/tipb/go-tipb"
+	"github.com/tikv/minitrace-go"
 )
 
 // make sure `TableReaderExecutor` implements `Executor`.
@@ -112,6 +113,9 @@ func (e *TableReaderExecutor) Open(ctx context.Context) error {
 		defer span1.Finish()
 		ctx = opentracing.ContextWithSpan(ctx, span1)
 	}
+
+	ctx, span := minitrace.StartSpanWithContext(ctx, "TableReaderExecutor.Open")
+	defer span.Finish()
 
 	e.memTracker = memory.NewTracker(e.id, -1)
 	e.memTracker.AttachTo(e.ctx.GetSessionVars().StmtCtx.MemTracker)
