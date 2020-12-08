@@ -41,7 +41,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"math/rand"
+	//"math/rand"
 	"net"
 	"runtime"
 	"runtime/pprof"
@@ -74,7 +74,7 @@ import (
 	"github.com/pingcap/tidb/sessionctx/stmtctx"
 	"github.com/pingcap/tidb/sessionctx/variable"
 	"github.com/pingcap/tidb/tablecodec"
-	tidbtrace "github.com/pingcap/tidb/trace"
+	//tidbtrace "github.com/pingcap/tidb/trace"
 	"github.com/pingcap/tidb/util/arena"
 	"github.com/pingcap/tidb/util/chunk"
 	"github.com/pingcap/tidb/util/execdetails"
@@ -83,7 +83,7 @@ import (
 	"github.com/pingcap/tidb/util/memory"
 	"github.com/pingcap/tidb/util/sqlexec"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/tikv/minitrace-go"
+	//"github.com/tikv/minitrace-go"
 	"go.uber.org/zap"
 )
 
@@ -793,7 +793,7 @@ func (cc *clientConn) Run(ctx context.Context) {
 
 		startTime := time.Now()
 
-		ctx, handle := minitrace.StartRootSpan(ctx, cc.packetToSQL(data), rand.Uint64(), &tidbtrace.Context{})
+		//ctx, handle := minitrace.StartRootSpan(ctx, cc.packetToSQL(data), rand.Uint64(), &tidbtrace.Context{})
 
 		cmd := data[0]
 		if err = cc.dispatch(ctx, data); err != nil {
@@ -827,7 +827,7 @@ func (cc *clientConn) Run(ctx context.Context) {
 		cc.addMetrics(cmd, startTime, err)
 		cc.pkt.sequence = 0
 
-		tidbtrace.Report(handle)
+		//tidbtrace.Report(handle)
 	}
 }
 
