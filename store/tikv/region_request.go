@@ -419,11 +419,11 @@ func (s *RegionRequestSender) sendReqToRegion(bo *Backoffer, rpcCtx *RPCContext,
 	}
 
 	ctx := bo.ctx
-	if rawHook := ctx.Value(RPCCancellerCtxKey{}); rawHook != nil {
-		var cancel context.CancelFunc
-		ctx, cancel = rawHook.(*RPCCanceller).WithCancel(ctx)
-		defer cancel()
-	}
+	//if rawHook := ctx.Value(RPCCancellerCtxKey{}); rawHook != nil {
+	//	var cancel context.CancelFunc
+	//	ctx, cancel = rawHook.(*RPCCanceller).WithCancel(ctx)
+	//	defer cancel()
+	//}
 	start := time.Now()
 	resp, err = s.client.SendRequest(ctx, rpcCtx.Addr, req, timeout)
 	if s.Stats != nil {

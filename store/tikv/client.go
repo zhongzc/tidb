@@ -39,7 +39,6 @@ import (
 	"github.com/pingcap/tidb/metrics"
 	"github.com/pingcap/tidb/store/tikv/tikvrpc"
 	tidbtrace "github.com/pingcap/tidb/trace"
-	"github.com/pingcap/tidb/util/execdetails"
 	"github.com/pingcap/tidb/util/logutil"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tikv/minitrace-go"
@@ -340,11 +339,11 @@ func (c *rpcClient) SendRequest(ctx context.Context, addr string, req *tikvrpc.R
 
 	start := time.Now()
 	defer func() {
-		stmtExec := ctx.Value(execdetails.StmtExecDetailKey)
-		if stmtExec != nil {
-			detail := stmtExec.(*execdetails.StmtExecDetails)
-			atomic.AddInt64(&detail.WaitKVRespDuration, int64(time.Since(start)))
-		}
+		//stmtExec := ctx.Value(execdetails.StmtExecDetailKey)
+		//if stmtExec != nil {
+		//	detail := stmtExec.(*execdetails.StmtExecDetails)
+		//	atomic.AddInt64(&detail.WaitKVRespDuration, int64(time.Since(start)))
+		//}
 		c.updateTiKVSendReqHistogram(req, start)
 	}()
 
