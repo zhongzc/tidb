@@ -24,7 +24,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/failpoint"
 	"github.com/pingcap/tidb/config"
@@ -395,11 +394,6 @@ func (s *tikvStore) CurrentVersion(txnScope string) (kv.Version, error) {
 }
 
 func (s *tikvStore) getTimestampWithRetry(bo *Backoffer, txnScope string) (uint64, error) {
-	if span := opentracing.SpanFromContext(bo.ctx); span != nil && span.Tracer() != nil {
-		span1 := span.Tracer().StartSpan("tikvStore.getTimestampWithRetry", opentracing.ChildOf(span.Context()))
-		defer span1.Finish()
-		bo.ctx = opentracing.ContextWithSpan(bo.ctx, span1)
-	}
 	var span minitrace.SpanHandle
 	bo.ctx, span = minitrace.StartSpanWithContext(bo.ctx, "tikvStore.getTimestampWithRetry")
 	defer span.Finish()

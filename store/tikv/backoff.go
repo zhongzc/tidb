@@ -21,7 +21,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/log"
 	"github.com/pingcap/tidb/kv"
@@ -310,11 +309,6 @@ func (b *Backoffer) withVars(vars *kv.Variables) *Backoffer {
 // Backoff sleeps a while base on the backoffType and records the error message.
 // It returns a retryable error if total sleep time exceeds maxSleep.
 func (b *Backoffer) Backoff(typ backoffType, err error) error {
-	if span := opentracing.SpanFromContext(b.ctx); span != nil && span.Tracer() != nil {
-		span1 := span.Tracer().StartSpan(fmt.Sprintf("tikv.backoff.%s", typ), opentracing.ChildOf(span.Context()))
-		defer span1.Finish()
-		opentracing.ContextWithSpan(b.ctx, span1)
-	}
 	var span minitrace.SpanHandle
 	b.ctx, span = minitrace.StartSpanWithContext(b.ctx, fmt.Sprintf("tikv.backoff.%s", typ))
 	defer span.Finish()

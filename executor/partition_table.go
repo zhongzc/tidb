@@ -17,7 +17,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/errors"
 	plannercore "github.com/pingcap/tidb/planner/core"
 	"github.com/pingcap/tidb/table"
@@ -141,11 +140,6 @@ func (n nextPartitionForUnionScan) nextPartition(ctx context.Context, tbl table.
 }
 
 func nextPartitionWithTrace(ctx context.Context, n nextPartition, tbl table.PhysicalTable) (Executor, error) {
-	if span := opentracing.SpanFromContext(ctx); span != nil && span.Tracer() != nil {
-		span1 := span.Tracer().StartSpan(fmt.Sprintf("nextPartition %d", tbl.GetPhysicalID()), opentracing.ChildOf(span.Context()))
-		defer span1.Finish()
-		ctx = opentracing.ContextWithSpan(ctx, span1)
-	}
 	ctx, span := minitrace.StartSpanWithContext(ctx, fmt.Sprintf("nextPartition %d", tbl.GetPhysicalID()))
 	defer span.Finish()
 	return n.nextPartition(ctx, tbl)

@@ -21,7 +21,6 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/failpoint"
 	"github.com/pingcap/parser/terror"
@@ -351,11 +350,6 @@ func (tf *txnFuture) wait() (kv.Transaction, error) {
 }
 
 func (s *session) getTxnFuture(ctx context.Context) *txnFuture {
-	if span := opentracing.SpanFromContext(ctx); span != nil && span.Tracer() != nil {
-		span1 := span.Tracer().StartSpan("session.getTxnFuture", opentracing.ChildOf(span.Context()))
-		defer span1.Finish()
-		ctx = opentracing.ContextWithSpan(ctx, span1)
-	}
 	ctx, span := minitrace.StartSpanWithContext(ctx, "session.getTxnFuture")
 	defer span.Finish()
 

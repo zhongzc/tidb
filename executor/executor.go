@@ -26,7 +26,6 @@ import (
 	"time"
 
 	"github.com/cznic/mathutil"
-	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/failpoint"
 	"github.com/pingcap/parser/ast"
@@ -267,11 +266,6 @@ func Next(ctx context.Context, e Executor, req *chunk.Chunk) error {
 	sessVars := base.ctx.GetSessionVars()
 	if atomic.LoadUint32(&sessVars.Killed) == 1 {
 		return ErrQueryInterrupted
-	}
-	if span := opentracing.SpanFromContext(ctx); span != nil && span.Tracer() != nil {
-		span1 := span.Tracer().StartSpan(fmt.Sprintf("%T.Next", e), opentracing.ChildOf(span.Context()))
-		defer span1.Finish()
-		ctx = opentracing.ContextWithSpan(ctx, span1)
 	}
 	ctx, span := minitrace.StartSpanWithContext(ctx, fmt.Sprintf("%T.Next", e))
 	defer span.Finish()
@@ -1137,13 +1131,6 @@ func init() {
 			s.RewritePhaseInfo.PreprocessSubQueries++
 			s.RewritePhaseInfo.DurationPreprocessSubQuery += time.Since(begin)
 		}(time.Now())
-
-		if span := opentracing.SpanFromContext(ctx); span != nil && span.Tracer() != nil {
-			span1 := span.Tracer().StartSpan("executor.EvalSubQuery", opentracing.ChildOf(span.Context()))
-			defer span1.Finish()
-			ctx = opentracing.ContextWithSpan(ctx, span1)
-		}
-
 		ctx, span := minitrace.StartSpanWithContext(ctx, "executor.EvalSubQuery")
 		defer span.Finish()
 

@@ -31,7 +31,6 @@ import (
 	"time"
 
 	"github.com/ngaut/pools"
-	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/failpoint"
 	"github.com/pingcap/parser"
@@ -492,11 +491,6 @@ func (s *session) doCommitWithRetry(ctx context.Context) error {
 	var err error
 	txnSize := s.txn.Size()
 	isPessimistic := s.txn.IsPessimistic()
-	if span := opentracing.SpanFromContext(ctx); span != nil && span.Tracer() != nil {
-		span1 := span.Tracer().StartSpan("session.doCommitWitRetry", opentracing.ChildOf(span.Context()))
-		defer span1.Finish()
-		ctx = opentracing.ContextWithSpan(ctx, span1)
-	}
 	ctx, span := minitrace.StartSpanWithContext(ctx, "session.doCommitWithRetry")
 	defer span.Finish()
 	err = s.doCommit(ctx)
@@ -551,11 +545,6 @@ func (s *session) doCommitWithRetry(ctx context.Context) error {
 }
 
 func (s *session) CommitTxn(ctx context.Context) error {
-	if span := opentracing.SpanFromContext(ctx); span != nil && span.Tracer() != nil {
-		span1 := span.Tracer().StartSpan("session.CommitTxn", opentracing.ChildOf(span.Context()))
-		defer span1.Finish()
-		ctx = opentracing.ContextWithSpan(ctx, span1)
-	}
 	ctx, span := minitrace.StartSpanWithContext(ctx, "session.CommitTxn")
 	defer span.Finish()
 
@@ -576,11 +565,6 @@ func (s *session) CommitTxn(ctx context.Context) error {
 }
 
 func (s *session) RollbackTxn(ctx context.Context) {
-	if span := opentracing.SpanFromContext(ctx); span != nil && span.Tracer() != nil {
-		span1 := span.Tracer().StartSpan("session.RollbackTxn", opentracing.ChildOf(span.Context()))
-		defer span1.Finish()
-	}
-
 	ctx, span := minitrace.StartSpanWithContext(ctx, "session.RollbackTxn")
 	defer span.Finish()
 
@@ -1082,10 +1066,6 @@ func (s *session) ensureFullGlobalStats() error {
 }
 
 func (s *session) ParseSQL(ctx context.Context, sql, charset, collation string) ([]ast.StmtNode, []error, error) {
-	if span := opentracing.SpanFromContext(ctx); span != nil && span.Tracer() != nil {
-		span1 := span.Tracer().StartSpan("session.ParseSQL", opentracing.ChildOf(span.Context()))
-		defer span1.Finish()
-	}
 	defer trace.StartRegion(ctx, "ParseSQL").End()
 	span := minitrace.StartSpan(ctx, "session.ParseSQL")
 	defer span.Finish()
@@ -1159,12 +1139,6 @@ func (s *session) ExecuteInternal(ctx context.Context, sql string) (recordSets [
 }
 
 func (s *session) Execute(ctx context.Context, sql string) (recordSets []sqlexec.RecordSet, err error) {
-	if span := opentracing.SpanFromContext(ctx); span != nil && span.Tracer() != nil {
-		span1 := span.Tracer().StartSpan("session.Execute", opentracing.ChildOf(span.Context()))
-		defer span1.Finish()
-		ctx = opentracing.ContextWithSpan(ctx, span1)
-		logutil.Eventf(ctx, "execute: %s", sql)
-	}
 	ctx, span := minitrace.StartSpanWithContext(ctx, "session.Execute")
 	defer span.Finish()
 
@@ -1221,11 +1195,6 @@ func (s *session) Parse(ctx context.Context, sql string) ([]ast.StmtNode, error)
 }
 
 func (s *session) ExecuteStmt(ctx context.Context, stmtNode ast.StmtNode) (sqlexec.RecordSet, error) {
-	if span := opentracing.SpanFromContext(ctx); span != nil && span.Tracer() != nil {
-		span1 := span.Tracer().StartSpan("session.ExecuteStmt", opentracing.ChildOf(span.Context()))
-		defer span1.Finish()
-		ctx = opentracing.ContextWithSpan(ctx, span1)
-	}
 	ctx, span := minitrace.StartSpanWithContext(ctx, "session.ExecuteStmt")
 	defer span.Finish()
 
@@ -1302,12 +1271,6 @@ func (s *session) hasQuerySpecial() bool {
 
 // runStmt executes the sqlexec.Statement and commit or rollback the current transaction.
 func runStmt(ctx context.Context, se *session, s sqlexec.Statement) (rs sqlexec.RecordSet, err error) {
-	if span := opentracing.SpanFromContext(ctx); span != nil && span.Tracer() != nil {
-		span1 := span.Tracer().StartSpan("session.runStmt", opentracing.ChildOf(span.Context()))
-		span1.LogKV("sql", s.OriginText())
-		defer span1.Finish()
-		ctx = opentracing.ContextWithSpan(ctx, span1)
-	}
 	ctx, span := minitrace.StartSpanWithContext(ctx, "session.runStmt")
 	defer span.Finish()
 

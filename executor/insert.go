@@ -20,7 +20,6 @@ import (
 	"runtime/trace"
 	"time"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/parser/mysql"
 	"github.com/pingcap/tidb/expression"
 	"github.com/pingcap/tidb/kv"
@@ -112,11 +111,6 @@ func (e *InsertExec) exec(ctx context.Context, rows [][]types.Datum) error {
 }
 
 func prefetchUniqueIndices(ctx context.Context, txn kv.Transaction, rows []toBeCheckedRow) (map[string][]byte, error) {
-	if span := opentracing.SpanFromContext(ctx); span != nil && span.Tracer() != nil {
-		span1 := span.Tracer().StartSpan("prefetchUniqueIndices", opentracing.ChildOf(span.Context()))
-		defer span1.Finish()
-		ctx = opentracing.ContextWithSpan(ctx, span1)
-	}
 	ctx, span := minitrace.StartSpanWithContext(ctx, "prefetchUniqueIndices")
 	defer span.Finish()
 	nKeys := 0
@@ -139,11 +133,6 @@ func prefetchUniqueIndices(ctx context.Context, txn kv.Transaction, rows []toBeC
 }
 
 func prefetchConflictedOldRows(ctx context.Context, txn kv.Transaction, rows []toBeCheckedRow, values map[string][]byte) error {
-	if span := opentracing.SpanFromContext(ctx); span != nil && span.Tracer() != nil {
-		span1 := span.Tracer().StartSpan("prefetchConflictedOldRows", opentracing.ChildOf(span.Context()))
-		defer span1.Finish()
-		ctx = opentracing.ContextWithSpan(ctx, span1)
-	}
 	ctx, span := minitrace.StartSpanWithContext(ctx, "prefetchConflictedOldRows")
 	defer span.Finish()
 	batchKeys := make([]kv.Key, 0, len(rows))
@@ -163,11 +152,6 @@ func prefetchConflictedOldRows(ctx context.Context, txn kv.Transaction, rows []t
 }
 
 func prefetchDataCache(ctx context.Context, txn kv.Transaction, rows []toBeCheckedRow) error {
-	if span := opentracing.SpanFromContext(ctx); span != nil && span.Tracer() != nil {
-		span1 := span.Tracer().StartSpan("prefetchDataCache", opentracing.ChildOf(span.Context()))
-		defer span1.Finish()
-		ctx = opentracing.ContextWithSpan(ctx, span1)
-	}
 	ctx, span := minitrace.StartSpanWithContext(ctx, "prefetchDataCache")
 	defer span.Finish()
 	values, err := prefetchUniqueIndices(ctx, txn, rows)

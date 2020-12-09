@@ -26,7 +26,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/failpoint"
 	"github.com/pingcap/kvproto/pkg/coprocessor"
@@ -252,12 +251,6 @@ func (s *RegionRequestSender) SendReqCtx(
 	rpcCtx *RPCContext,
 	err error,
 ) {
-	if span := opentracing.SpanFromContext(bo.ctx); span != nil && span.Tracer() != nil {
-		span1 := span.Tracer().StartSpan("regionRequest.SendReqCtx", opentracing.ChildOf(span.Context()))
-		defer span1.Finish()
-		bo = bo.Clone()
-		bo.ctx = opentracing.ContextWithSpan(bo.ctx, span1)
-	}
 	var span minitrace.SpanHandle
 	bo.ctx, span = minitrace.StartSpanWithContext(bo.ctx, "regionRequest.SendReqCtx")
 	defer span.Finish()
@@ -500,12 +493,6 @@ func (s *RegionRequestSender) releaseStoreToken(st *Store) {
 }
 
 func (s *RegionRequestSender) onSendFail(bo *Backoffer, ctx *RPCContext, err error) error {
-	if span := opentracing.SpanFromContext(bo.ctx); span != nil && span.Tracer() != nil {
-		span1 := span.Tracer().StartSpan("regionRequest.onSendFail", opentracing.ChildOf(span.Context()))
-		defer span1.Finish()
-		bo = bo.Clone()
-		bo.ctx = opentracing.ContextWithSpan(bo.ctx, span1)
-	}
 	var span minitrace.SpanHandle
 	bo.ctx, span = minitrace.StartSpanWithContext(bo.ctx, "regionRequest.onSendFail")
 	defer span.Finish()
@@ -576,12 +563,6 @@ func regionErrorToLabel(e *errorpb.Error) string {
 }
 
 func (s *RegionRequestSender) onRegionError(bo *Backoffer, ctx *RPCContext, seed *uint32, regionErr *errorpb.Error) (retry bool, err error) {
-	if span := opentracing.SpanFromContext(bo.ctx); span != nil && span.Tracer() != nil {
-		span1 := span.Tracer().StartSpan("tikv.onRegionError", opentracing.ChildOf(span.Context()))
-		defer span1.Finish()
-		bo = bo.Clone()
-		bo.ctx = opentracing.ContextWithSpan(bo.ctx, span1)
-	}
 	var span minitrace.SpanHandle
 	bo.ctx, span = minitrace.StartSpanWithContext(bo.ctx, "tikv.onRegionError")
 	defer span.Finish()

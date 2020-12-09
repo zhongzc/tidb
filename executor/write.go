@@ -17,7 +17,6 @@ import (
 	"context"
 	"strings"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/parser/ast"
 	"github.com/pingcap/parser/charset"
 	"github.com/pingcap/parser/mysql"
@@ -50,11 +49,6 @@ var (
 //     2. err (error) : error in the update.
 func updateRecord(ctx context.Context, sctx sessionctx.Context, h kv.Handle, oldData, newData []types.Datum, modified []bool, t table.Table,
 	onDup bool, memTracker *memory.Tracker) (bool, error) {
-	if span := opentracing.SpanFromContext(ctx); span != nil && span.Tracer() != nil {
-		span1 := span.Tracer().StartSpan("executor.updateRecord", opentracing.ChildOf(span.Context()))
-		defer span1.Finish()
-		ctx = opentracing.ContextWithSpan(ctx, span1)
-	}
 	ctx, span := minitrace.StartSpanWithContext(ctx, "executor.updateRecord")
 	defer span.Finish()
 	txn, err := sctx.Txn(false)

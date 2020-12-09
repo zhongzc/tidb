@@ -17,7 +17,6 @@ import (
 	"context"
 	"io"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/errors"
 	"github.com/pingcap/parser/model"
 	"github.com/pingcap/parser/mysql"
@@ -226,11 +225,6 @@ func (c *index) Create(sctx sessionctx.Context, us kv.UnionStore, indexedValues 
 	}
 
 	if ctx != nil {
-		if span := opentracing.SpanFromContext(ctx); span != nil && span.Tracer() != nil {
-			span1 := span.Tracer().StartSpan("index.Create", opentracing.ChildOf(span.Context()))
-			defer span1.Finish()
-			ctx = opentracing.ContextWithSpan(ctx, span1)
-		}
 		var span minitrace.SpanHandle
 		ctx, span = minitrace.StartSpanWithContext(ctx, "index.Create")
 		defer span.Finish()

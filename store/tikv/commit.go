@@ -16,7 +16,6 @@ package tikv
 import (
 	"encoding/hex"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/errors"
 	pb "github.com/pingcap/kvproto/pkg/kvrpcpb"
 	"github.com/pingcap/tidb/kv"
@@ -153,12 +152,6 @@ func (actionCommit) handleSingleBatch(c *twoPhaseCommitter, bo *Backoffer, batch
 }
 
 func (c *twoPhaseCommitter) commitMutations(bo *Backoffer, mutations CommitterMutations) error {
-	if span := opentracing.SpanFromContext(bo.ctx); span != nil && span.Tracer() != nil {
-		span1 := span.Tracer().StartSpan("twoPhaseCommitter.commitMutations", opentracing.ChildOf(span.Context()))
-		defer span1.Finish()
-		bo.ctx = opentracing.ContextWithSpan(bo.ctx, span1)
-	}
-
 	var span minitrace.SpanHandle
 	bo.ctx, span = minitrace.StartSpanWithContext(bo.ctx, "twoPhaseCommitter.commitMutations")
 	defer span.Finish()

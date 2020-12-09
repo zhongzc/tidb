@@ -20,7 +20,6 @@ package table
 import (
 	"context"
 
-	"github.com/opentracing/opentracing-go"
 	"github.com/pingcap/parser/model"
 	mysql "github.com/pingcap/tidb/errno"
 	"github.com/pingcap/tidb/kv"
@@ -215,10 +214,6 @@ type Table interface {
 
 // AllocAutoIncrementValue allocates an auto_increment value for a new row.
 func AllocAutoIncrementValue(ctx context.Context, t Table, sctx sessionctx.Context) (int64, error) {
-	if span := opentracing.SpanFromContext(ctx); span != nil && span.Tracer() != nil {
-		span1 := span.Tracer().StartSpan("table.AllocAutoIncrementValue", opentracing.ChildOf(span.Context()))
-		defer span1.Finish()
-	}
 	span := minitrace.StartSpan(ctx, "table.AllocAutoIncrementValue")
 	defer span.Finish()
 
@@ -234,10 +229,6 @@ func AllocAutoIncrementValue(ctx context.Context, t Table, sctx sessionctx.Conte
 // AllocBatchAutoIncrementValue allocates batch auto_increment value for rows, returning firstID, increment and err.
 // The caller can derive the autoID by adding increment to firstID for N-1 times.
 func AllocBatchAutoIncrementValue(ctx context.Context, t Table, sctx sessionctx.Context, N int) (firstID int64, increment int64, err error) {
-	if span := opentracing.SpanFromContext(ctx); span != nil && span.Tracer() != nil {
-		span1 := span.Tracer().StartSpan("table.AllocBatchAutoIncrementValue", opentracing.ChildOf(span.Context()))
-		defer span1.Finish()
-	}
 	span := minitrace.StartSpan(ctx, "table.AllocBatchAutoIncrementValue")
 	defer span.Finish()
 	increment = int64(sctx.GetSessionVars().AutoIncrementIncrement)
